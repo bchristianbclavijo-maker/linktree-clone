@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Linktree Clone"
+version = "1.0.0"
+id = "artifacts/linktree"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25140
+
+[services.development]
+run = "pnpm --filter @workspace/linktree run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/linktree", "run", "build" ]
+publicDir = "artifacts/linktree/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25140"
+BASE_PATH = "/"

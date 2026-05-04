@@ -1,0 +1,295 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: linktree
+    description: Linktree operations
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /linktree:
+    get:
+      operationId: getLinktreeData
+      tags: [linktree]
+      summary: Get profile, links, design and click data
+      responses:
+        "200":
+          description: Linktree data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinktreeData"
+    post:
+      operationId: saveLinktreeData
+      tags: [linktree]
+      summary: Save profile, links, and design
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveLinktreeRequest"
+      responses:
+        "200":
+          description: Saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveResult"
+  /linktree/track/{id}:
+    post:
+      operationId: trackClick
+      tags: [linktree]
+      summary: Track a link click
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated click count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackResult"
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    LinkItem:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+        emoji:
+          type: string
+        order:
+          type: integer
+      required:
+        - id
+        - label
+        - url
+        - emoji
+        - order
+    Profile:
+      type: object
+      properties:
+        photo:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - photo
+        - name
+        - description
+    Design:
+      type: object
+      properties:
+        bgColor:
+          type: string
+        glowColor:
+          type: string
+        glowOpacity:
+          type: number
+        accentColor:
+          type: string
+        textColor:
+          type: string
+      required:
+        - bgColor
+        - glowColor
+        - glowOpacity
+        - accentColor
+        - textColor
+    LinktreeData:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/Profile"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkItem"
+        design:
+          $ref: "#/components/schemas/Design"
+        clicks:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+        - profile
+        - links
+        - design
+        - clicks
+    SaveLinktreeRequest:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/Profile"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkItem"
+        design:
+          $ref: "#/components/schemas/Design"
+      required:
+        - profile
+        - links
+        - design
+    SaveResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+    TrackResult:
+      type: object
+      properties:
+        clicks:
+          type: integer
+      required:
+        - clicks
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
